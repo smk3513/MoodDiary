@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "justForDogs",
-    "slug": "justForDogs",
+    "name": "MoodDiary",
+    "slug": "MoodDiary",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
