@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { doc, setDoc, getDoc, addDoc, collection, serverTimestamp, onSnapshot, orderBy, query, where} from 'firebase/firestore';
 import { FIRESTORE_DB, FIREBASE_AUTH as auth } from './FireBaseConfig';
 import NetInfo from '@react-native-community/netinfo';
@@ -82,6 +82,13 @@ const DiaryContent = ({ route, navigation }) => {
       userId: auth.currentUser.uid
     };
     
+    // Check if an emotion is selected
+    if (!selectedEmotion) {
+      // If no emotion is selected, show an alert and return
+      Alert.alert('Error', 'Please select an emotion before saving the diary.');
+      return;
+    }
+
     const diaryCollection = collection(FIRESTORE_DB, 'diaries');
     
     try {
