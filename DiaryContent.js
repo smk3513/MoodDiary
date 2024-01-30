@@ -15,6 +15,7 @@ const emotions = [
 ];
 
 const DiaryContent = ({ route, navigation }) => {
+  const { newDiary, diaryId, diaryToEdit } = route.params || {};
   const [diaryTitle, setDiaryTitle] = useState('');
   const [diaryText, setDiaryText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
