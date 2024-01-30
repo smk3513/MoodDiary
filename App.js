@@ -6,7 +6,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import DiaryList from './DiaryList';
 import Home from './Home';
 import DiaryContent from './DiaryContent';
-import DiaryDetail from './DiaryDetail';
+// import DiaryDetail from './DiaryDetail';
 import Login from './Login';
 import { onAuthStateChanged } from 'firebase/auth';
 import { FIREBASE_AUTH as auth} from './FireBaseConfig';
@@ -49,10 +49,10 @@ export default function App({ navigation }) {
           name="DiaryContent"
           component={DiaryContent}
         />
-        <Stack.Screen
+        {/* <Stack.Screen
           name="DiaryDetail"
           component={DiaryDetail}
-        />
+        /> */}
         <Stack.Screen
           name="Login"
           component={Login}

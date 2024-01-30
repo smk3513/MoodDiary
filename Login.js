@@ -28,7 +28,7 @@ const Login = ( {navigation} ) => {
         try {
             const response = await createUserWithEmailAndPassword(auth, email, password);
             console.log(response);
-            alert('Check your email!');
+            alert('Sign up suceed!');
         } catch (error) {
             console.log(error);
             alert('Sign up failed: ' + error.message);

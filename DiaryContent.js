@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { doc, setDoc, addDoc, collection, serverTimestamp, onSnapshot, orderBy, query, where} from 'firebase/firestore';
+import { doc, setDoc, getDoc, addDoc, collection, serverTimestamp, onSnapshot, orderBy, query, where} from 'firebase/firestore';
 import { FIRESTORE_DB, FIREBASE_AUTH as auth } from './FireBaseConfig';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,7 +15,6 @@ const emotions = [
 ];
 
 const DiaryContent = ({ route, navigation }) => {
-  const { newDiary, diaryId, diaryToEdit } = route.params || {};
   const [diaryTitle, setDiaryTitle] = useState('');
   const [diaryText, setDiaryText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,11 +27,24 @@ const DiaryContent = ({ route, navigation }) => {
   useEffect(() => {
     const loadDiary = async () => {
       const netInfo = await NetInfo.fetch();
-
       if (!netInfo.isConnected) {
         const storedDiaries = await AsyncStorage.getItem('diaries');
         setDiary(storedDiaries ? JSON.parse(storedDiaries) : []);
         return;
+      }
+
+      if (diaryToEdit) {
+        console.log("edit tried in diary content");
+        const diaryRef = doc(FIRESTORE_DB, 'diaries', diaryId);
+        const diarySnap = await getDoc(diaryRef);
+  
+        if (diarySnap.exists()) {
+          const diaryData = diarySnap.data();
+          setDiaryTitle(diaryData.diaryTitle);
+          setDiaryText(diaryData.diaryText);
+          setSelectedEmotion(diaryData.selectedEmotion);
+          return;
+        }
       }
 
       const diariesQuery = query(
@@ -56,7 +68,7 @@ const DiaryContent = ({ route, navigation }) => {
     };
 
     loadDiary();
-  }, []);
+  }, [diaryToEdit, diaryId]);
 
   const saveDiary = async () => {
     setIsLoading(true);
@@ -72,27 +84,24 @@ const DiaryContent = ({ route, navigation }) => {
     const diaryCollection = collection(FIRESTORE_DB, 'diaries');
     
     try {
-      console.log(auth.currentUser.uid);
       // saving a new diary entry
       if (newDiary) {
-        console.log('added'),
         await addDoc(diaryCollection, {
           ...diaryEntry,
-          //createdAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
         });
       // editing existing diary
-      } else if ( diaryId && diaryToEdit) {
+      } else if (diaryToEdit) {
         const diaryRef = doc(FIRESTORE_DB, 'diaries', diaryId);
         await setDoc(diaryRef, {
           ...diaryEntry,
-          //updatedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         }, { merge: true });
       }
     } catch (error) {
       console.error('Error saving diary: ', error);
     } finally {
-      console.log(diaryEntry);
-      navigation.navigate('DiaryList');
+      navigation.navigate('DiaryList', {selectedEmotion});
       setIsLoading(false);
     }
   };

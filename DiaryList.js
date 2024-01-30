@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { route, useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Image} from 'react-native';
-import { doc, deleteDoc } from 'firebase/firestore';
-import { FIRESTORE_DB as db } from './FireBaseConfig';
+import { doc, deleteDoc, collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { FIRESTORE_DB } from './FireBaseConfig';
+import { FIREBASE_AUTH } from './FireBaseConfig';
 
 /* for creating flat list */
-const DiaryItem = ({ diary, onDelete, onEdit, onView }) => {
+const DiaryItem = ({ diary, onDelete, onEdit, selectedEmotion }) => {
   /* access to emotional images */
-  const getEmotionImage = (emotionId) => {
+  const getEmotionImage = (selectedEmotion) => {
       const emotionImages = {
           'happy': require('./images/emotion_1.png'),
           'good': require('./images/emotion_2.png'),
@@ -14,15 +15,16 @@ const DiaryItem = ({ diary, onDelete, onEdit, onView }) => {
           'sad': require('./images/emotion_4.png'),
           'bad': require('./images/emotion_5.png'),
       };
-      return emotionImages[emotionId] || null;
+      const image = emotionImages[selectedEmotion] || null;
+      return image;
   };
   return (
       <View style={styles.diaryItem}>
           <Text style={styles.diaryDate}>{diary.date}</Text>
-          <Image source={getEmotionImage(diary.emotion)} style={styles.emotionImage} />
-          <TouchableOpacity onPress={() => onView(diary.id)}>
+          <Image source={getEmotionImage(diary.selectedEmotion)} style={styles.emotionImage} />
+          {/* <TouchableOpacity onPress={() => onView(diary.id)}>
               <Text style={styles.viewButton}>View</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity onPress={() => onEdit(diary.id)}>
               <Text style={styles.editButton}>Edit</Text>
           </TouchableOpacity>
@@ -33,8 +35,40 @@ const DiaryItem = ({ diary, onDelete, onEdit, onView }) => {
   );
 };
 
-export default function DiaryList( { navigation } ) {
+export default function DiaryList( { route, navigation } ) {
   const [diaries, setDiaries] = useState([]);
+  const [filteredDiaries, setFilteredDiaries] = useState([]);
+  const { selectedEmotion } = route.params || {};  
+
+  useEffect(() => {
+    if (FIREBASE_AUTH.currentUser) {
+      const diariesQuery = query(
+        collection(FIRESTORE_DB, 'diaries'),
+        where('userId', '==', FIREBASE_AUTH.currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
+
+      const unsubscribe = onSnapshot(diariesQuery, (snapshot) => {
+        const updatedDiaries = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().createdAt?.toDate().toLocaleDateString() || '',
+        }));
+        setDiaries(updatedDiaries);
+
+        if (selectedEmotion) {
+          const filtered = updatedDiaries.filter(diary => diary.selectedEmotion === selectedEmotion);
+          setFilteredDiaries(filtered);
+        } else {
+          setFilteredDiaries(updatedDiaries);
+        }
+      });
+
+      return () => unsubscribe();
+    }
+  }, [FIREBASE_AUTH.currentUser, selectedEmotion]);
+
+
 
   /* adding new diary : navigating to DiaryContent */
   const addDiary = () => {
@@ -44,7 +78,7 @@ export default function DiaryList( { navigation } ) {
   };
 
   /* delete selected diary */
-  const deleteDiary = (diary) => {
+  const deleteDiary = (docId) => {
     Alert.alert(
       "Delete Diary",
       "Are you sure you want to delete this diary?",
@@ -53,7 +87,7 @@ export default function DiaryList( { navigation } ) {
         {
           text: "Delete",
           onPress: async () => {
-            const diaryRef = doc(db, 'diaries', diary.id);
+            const diaryRef = doc(FIRESTORE_DB, 'diaries', docId);
             await deleteDoc(diaryRef);
           },
         }
@@ -62,20 +96,20 @@ export default function DiaryList( { navigation } ) {
   };
 
   /* edit selected diary : navigating to DiaryContent */
-  const editDiary = (diaryId) => {
-      const diaryToEdit = diaries.find((diary) => diary.id === diaryId);
-      navigation.navigate('DiaryContent', { diaryId: diaryId, diaryToEdit: diaryToEdit });
+  const editDiary = (docId) => {
+      navigation.navigate('DiaryContent', { diaryId: docId, diaryToEdit: true });
   };
 
-  /* view selected diary detail : navigating to DiaryDetail */
-  const viewDiary = (diaryId) => {
-      const diaryToView = diaries.find((diary) => diary.id === diaryId);
-      if (diaryToView) {
-        navigation.navigate('DiaryDetail', { diary: diaryToView });
-      } else {
-        console.warn("Diary not found");
-      }
-  };
+  /* WILL BE IMPLEMENTED LATER */
+  // /* view selected diary detail : navigating to DiaryDetail */
+  // const viewDiary = (diaryId) => {
+  //     const diaryToView = diaries.find((diary) => diary.id === diaryId);
+  //     if (diaryToView) {
+  //       navigation.navigate('DiaryDetail', { diary: diaryToView });
+  //     } else {
+  //       console.warn("Diary not found");
+  //     }
+  // };
 
   /* add button at header calling addDiary func */
   const renderAddButton = () => {
@@ -95,7 +129,11 @@ export default function DiaryList( { navigation } ) {
         data={diaries}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <DiaryItem diary={item} onDelete={deleteDiary} onEdit={editDiary} onView={viewDiary}/>
+          <DiaryItem 
+            diary={item} 
+            onDelete={deleteDiary} 
+            onEdit={editDiary}
+            />
         )}
         ListHeaderComponent={renderAddButton}
       />
